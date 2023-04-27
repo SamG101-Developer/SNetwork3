@@ -1,4 +1,4 @@
-### Establishing end-to-end encryption for UDP control connections []
+### Establishing end-to-end encryption for UDP control connections [CCP]
 In this scenario, A will perform a handshake with B to initiate a secure UDP connection. The following steps are taken:
 - A owns a static asymmetric key pair: `[sPKa, sSKa]`
 - A generates an ephemeral asymmetric key pair: `[ePKa, eSKa]`
@@ -29,7 +29,7 @@ Note
 - Every fixed time point, keys are updated using a symmetric key wrap
 
 
-### Establishing end-to-end encryption for packet data connections
+### Establishing end-to-end encryption for packet data connections [PDCP]
 This is slightly more complicated than the control-connection, because the client only connects to the 1st relay 
 node, and passes information through it to the other relay nodes. Due to the security of the control-connection, it 
 can be modeled that the 1st relay node is a malicious actor between the client and the other relay nodes. However, 
