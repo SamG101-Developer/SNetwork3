@@ -28,6 +28,20 @@ Note
 - Signatures have a [random value, timestamp, recipient public key] attached to them
 - Every fixed time point, keys are updated using a symmetric key wrap
 
+<BR>
+
+There is a MITM the middle attack that appears as if it could be successful here, by an adversary (C) intercepting the 
+stage 1 key transport, when A sends its signed ephemeral public key to B. If C was to replace the signed ephemeral 
+key with its own signed ephemeral kay, there would be an IP mismatch in the DHT for a verification, but if C also 
+swapped the IP addresses on the packet, then B would generate and send a symmetric key to C, who could forward along 
+the signature to A. However, because recipient id is embedded into the signature, it is impossible for this to 
+happen - A would see that a signed message from B was actually intended for C, and therefore would close the 
+connection down immediately, before any information is leaked.
+- If A's signed keys are changed, and IP isn't changed -> verification at B fails because statis keys for A's IP 
+  won't verify C's signature
+- If A's signed keys are changed, and IP is changed too -> verification at A fails because the recipient id in the 
+  receives signature from B (forwarded back by C) would be C's id, not A's id
+
 
 ### Establishing end-to-end encryption for packet data connections [PDCP]
 This is slightly more complicated than the control-connection, because the client only connects to the 1st relay 

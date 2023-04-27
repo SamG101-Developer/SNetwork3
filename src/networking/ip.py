@@ -1,4 +1,5 @@
 from __future__ import annotations
+from src.crypto_engines.secure_bytes import secure_bytes
 import socket
 import stun
 
@@ -8,8 +9,8 @@ class ip:
         self._ip: str = ""
 
     @property
-    def bytes(self) -> bytes:
-        return socket.inet_aton(self._ip)
+    def bytes(self) -> secure_bytes:
+        return secure_bytes(socket.inet_aton(self._ip))
 
     @property
     def string(self) -> str:
