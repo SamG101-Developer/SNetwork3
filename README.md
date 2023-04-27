@@ -40,7 +40,7 @@ connection down immediately, before any information is leaked.
 - If A's signed keys are changed, and IP isn't changed -> verification at B fails because statis keys for A's IP 
   won't verify C's signature
 - If A's signed keys are changed, and IP is changed too -> verification at A fails because the recipient id in the 
-  receives signature from B (forwarded back by C) would be C's id, not A's id
+  received signature from B (forwarded back by C) would be C's id, not A's id
 
 
 ### Establishing end-to-end encryption for packet data connections [PDCP]
