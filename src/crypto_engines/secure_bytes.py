@@ -72,3 +72,8 @@ class secure_bytes(bytes):
     def __reversed__(self) -> secure_bytes:
         # Return the reversed iterator of the internal bytes object.
         return secure_bytes(self._bytes[::-1])
+
+    @property
+    def raw(self) -> bytes:
+        # Return the internal bytes object.
+        return self._bytes

@@ -21,6 +21,6 @@ class kem:
         return secure_bytes(cipher_text), secure_bytes(plain_text)
 
     @staticmethod
-    def kem_unwrap(client_ephemeral_private_key: key_pair, encapsulated_key: secure_bytes) -> secure_bytes:
+    def kem_unwrap(client_ephemeral_private_key: secure_bytes, encapsulated_key: secure_bytes) -> secure_bytes:
         # generate the random mask s and unwrap the received key with the
-        return secure_bytes(kyber1024.decrypt(client_ephemeral_private_key.secret_key, encapsulated_key))
+        return secure_bytes(kyber1024.decrypt(client_ephemeral_private_key, encapsulated_key))

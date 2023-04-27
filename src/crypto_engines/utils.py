@@ -1,7 +1,28 @@
 from __future__ import annotations
 from src.crypto_engines.hashing import hashing
+from src.crypto_engines.key_derivation import kdf
 from src.crypto_engines.secure_bytes import secure_bytes
+from src.crypto_engines.symmetric import symmetric_cipher
 import time
+
+
+class key_set:
+    def __init__(self, master_key: secure_bytes):
+        self._master_key = master_key
+        self._hashed_master_key = hashing.hash(master_key)
+        self._symmetric_cipher_key = kdf.derive_key(master_key, secure_bytes(b"SYMMETRIC-CIPHER-KEY"), symmetric_cipher.KEY_LENGTH)
+
+    @property
+    def master_key(self) -> secure_bytes:
+        return self._master_key
+
+    @property
+    def hashed_master_key(self) -> secure_bytes:
+        return self._hashed_master_key
+
+    @property
+    def symmetric_cipher_key(self) -> secure_bytes:
+        return self._symmetric_cipher_key
 
 
 class key_pair:

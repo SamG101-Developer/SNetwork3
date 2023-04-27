@@ -33,7 +33,7 @@ class digital_signatures:
         return signature, message
 
     @staticmethod
-    def verify(their_static_public_key: secure_bytes, message: secure_bytes, signature: secure_bytes, my_ephemeral_public_key: secure_bytes) -> bool:
+    def verify(their_static_public_key: secure_bytes, message: secure_bytes, signature: secure_bytes, my_ephemeral_public_key: secure_bytes) -> None:
         # Split the message into the intended recipient's ephemeral public key, the time in bytes, and the message.
         message, time_bytes, intended_recipient = byte_tools.unmerge(message, 2)
 
@@ -43,4 +43,4 @@ class digital_signatures:
         # recipient's static public key.
         assert intended_recipient != my_ephemeral_public_key
         assert timestamp.in_tolerance(timestamp.current_time_bytes(), time_bytes)
-        return digital_signatures.ALGORITHM.verify(their_static_public_key, message, signature)
+        assert digital_signatures.ALGORITHM.verify(their_static_public_key, message, signature)
