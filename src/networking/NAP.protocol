@@ -1,0 +1,108 @@
+Turn on device, click connect
+
+
+Inter-Node-Connection-Key-Exchange-Protocol (INCKEP)
+Node A -> Node B
+
+A : <generate ephemeral asymmetric key pair - ePKa, eSKa>
+  : <signs ephemeral public key with static private key => s(ePKa)>
+  : CON_REQ s(ePKa) -> B
+
+B : <verifies s(ePKa) with sPKa => ePKa>
+  : <generates random master key => CMK>
+  : <argon2 key derivation CMK => [C_AES_KEY, C_KMAC_KEY]>
+  : <signed CMK with sSKb => s(CMK)>
+  : <encrypt s(CMK) with ePKa => e(s(CMK))>
+  : CON_ACC : e(s(CMK))
+
+A : <decrypts e(s(CMK)) with ePKa => s(CMK)>
+  : <verify s(CMK) with sPKb => CMK>
+  : <argon2 key derivation CMK => [C_AES_KEY, C_KMAC_KEY]>
+
+
+All messages: e(m || s(s)) || k(e(...))
+
+Client-to-Relay-Packet-Key-Exchange-Protocol (CRPKEP)
+Node A -> Node B
+
+A : <select B from DHT>
+  : <run INCKEP to establish encrypted connection to B => receive ePK>
+  : <generates random master key => PMK>
+  : <argon2 key derivation PMK => [P_AES_KEY, P_KMAC_KEY]>
+  : <encrypt PMK with ePK1 => e(PMK)> (unauthenticated)
+  : PKT_KEM e(PMK) -> B
+
+B : <sign e(PMK) with sSKb => s(e(PMK))>
+  : PKT_ACC s(e(PMK)) -> A
+  : <argon2 key derivation PMK => [P_AES_KEY, P_KMAC_KEY]>
+
+A : <verify s(e(PMK)) -> e(PMK)'>
+  : <check e(PMK) == e(PMK)'
+
+
+Node A -> Node C
+
+A : <select C from DHT>
+  : PKT_CON_EXT <C ip> -> B
+  : <generates random master key => PMK>
+  : <argon2 key derivation PMK => [P_AES_KEY, P_KMAC_KEY]>
+
+B : <run INCKEP to establish encrypted connection to C>
+  : <receive s(ePKc)>
+  : FWD_PUB_KEY s(ePKc) -> A
+
+A : <verify s(ePKc)>
+  : <encrypt PMK with ePK1 => e(PMK)> (unauthenticated)
+  : PKT_KEM e(PMK) -> B
+
+B : <receive e(PMK)>
+  : PKT_KEM e(PMK) -> C
+
+C : <sign e(PMK) with sSKc => s(e(PMK))>
+  : PKT_ACC s(e(PMK)) -> B
+  : <argon2 key derivation PMK => [P_AES_KEY, P_KMAC_KEY]>
+
+B : <receive s(e(PMK))
+  : PKT_ACC s(e(PMK)) -> A
+
+A : <verify s(e(PMK)) -> e(PMK)'>
+  : <check e(PMK) == e(PMK)'
+
+
+Node A -> Node D
+
+A : <select D from DHT>
+  : PKT_CON_EXT <D ip> -> B
+  : <generates random master key => PMK>
+  : <argon2 key derivation PMK => [P_AES_KEY, P_KMAC_KEY]>
+
+B : PKT_CON_EXT <D ip> -> C
+
+C : <run INCKEP to establish encrypted connection to D>
+  : <receive s(ePKd)>
+  : FWD_PUB_KEY s(ePKd) -> B
+
+B : FWD_PUB_KEY s(ePKd) -> A
+
+A : <verify s(ePKd)>
+  : <encrypt PMK with ePK1 => e(PMK)> (unauthenticated)
+  : PKT_KEM e(PMK) -> B
+
+B : <receive e(PMK)>
+  : PKT_KEM e(PMK) -> C
+
+C : <receive e(PMK)>
+  : PKT_KEM e(PMK) -> D
+
+D : <sign e(PMK) with sSKd => s(e(PMK))>
+  : PKT_ACC s(e(PMK)) -> C
+  : <argon2 key derivation PMK => [P_AES_KEY, P_KMAC_KEY]>
+
+C : <receive s(e(PMK))>
+  : PKT_ACC s(e(PMK)) -> B
+
+B : <receive s(e(PMK))>
+  : PKT_ACC s(e(PMK)) -> A
+
+A : <verify s(e(PMK)) -> e(PMK)'>
+  : <check e(PMK) == e(PMK)'
