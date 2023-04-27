@@ -5,6 +5,7 @@ In this scenario, A will perform a handshake with B to initiate a secure UDP con
 - A signs the ephemeral public key with its static secret key: `S(ePKa, sSKa)`
 - A sends a `CON_REQ` to B, with the signed ephemeral public key as metadata
 
+<BR>
 
 - B receives a `CON_REQ` from A, with the A's signed ephemeral public key as metadata
 - B verifies A's ephemeral public key with A's static public key: `V(S(ePKa, sSKa), ePKa, sPKa)`
@@ -14,11 +15,13 @@ In this scenario, A will perform a handshake with B to initiate a secure UDP con
 - B KEMs the CMK and signature with A's ephemeral public key: `KEM(S(CMK, sSKb), ePKa)`
 - B sends a `CON_ACC` to A, with the KEMed signed CMK as metadata
 
+<BR>
 
 - A receives a `CON_ACC` from B, with the KEMed signed CMK as metadata
 - A decrypts the KEMed signed CMK using its own ephemeral private key: `UNKEM(KEM(S(CMK, sSKb), ePKa), eSKa) => S(CMK, sSKb)`
 - A verifies the signature using B's static public key: `V(S(CMK, sSKb), CMK, sPKb) => CMK`
 - A derives a symmetric encryption key from the CMK: `CMK_EK` (encryption key)
+
 
 
 Note
@@ -59,6 +62,7 @@ must create the symmetric keys, and KEM them to the relay nodes. The following s
 - All communications from A go through other relay nodes in the chain to N (auto-forward)
 - All communications from N go through other relay nodes in the chain to A (auto-forward)
 
+<BR>
 
 - A chooses a node N from the DHT, using a predefined algorithm
 - A generates a random symmetric packet master key: `PMK` (packet master key)
@@ -67,6 +71,7 @@ must create the symmetric keys, and KEM them to the relay nodes. The following s
 - A KEMs the PMK with N's ephemeral public key: `KEM(PMK, ePKn)`
 - A sends a `PKT_REQ` to N, with the KEMed PMK as metadata (via the relay nodes)
 
+<BR>
 
 - N receives a `PKT_REQ` from A, with the KEMed PMK as metadata (via the relay nodes)
 - N decrypts the KEMed PMK using its own ephemeral private key: `UNKEM(KEM(PMK, ePKn), eSKn) => PMK`
@@ -74,6 +79,7 @@ must create the symmetric keys, and KEM them to the relay nodes. The following s
 - N signs the hash of the PMK with its static secret key: `S(H(PMK), sSKn)`
 - N sends a `PKT_ACC` to A, with the signed hash of the PMK as metadata (via the relay nodes)
 
+<BR>
 
 - A receives a `PKT_ACC` from N, with the signed hash of the PMK as metadata (via the relay nodes)
 - A verifies the signature using N's static public key: `V(S(H(PMK), sSKn), H(PMK), sPKn) => H(PMK)`
