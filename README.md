@@ -9,19 +9,17 @@ In this scenario, A will perform a handshake with B to initiate a secure UDP con
 
 - B receives a `CON_REQ` from A, with the A's signed ephemeral public key as metadata
 - B verifies A's ephemeral public key with A's static public key: `V(S(ePKa, sSKa), ePKa, sPKa)`
-- B generates a random symmetric connection master key: `CMK` (control master key)
-- B derives a symmetric encryption key from the CMK: `CMK_EK` (encryption key)
-- B signs the CMK with its static secret key: `S(CMK, sSKb)`
-- B KEMs the CMK and signature with A's ephemeral public key: `KEM(S(CMK, sSKb), ePKa)`
-- B sends a `CON_ACC` to A, with the KEMed signed CMK as metadata
+- B generated the KEM for a master key: `KEM(ePKa) => [CMK, CMK_KEM]`
+- B signs the `CMK_KEM` with its static secret key: `S(CMK_KEM, sSKb)`
+- B sends a `CON_ACC` to A, with the signed KEM as metadata
+- B can KDF the CMK into a symmetric encryption key: `CMK_EK` (encryption key)
 
 <BR>
 
 - A receives a `CON_ACC` from B, with the KEMed signed CMK as metadata
-- A decrypts the KEMed signed CMK using its own ephemeral private key: `UNKEM(KEM(S(CMK, sSKb), ePKa), eSKa) => S(CMK, sSKb)`
-- A verifies the signature using B's static public key: `V(S(CMK, sSKb), CMK, sPKb) => CMK`
-- A derives a symmetric encryption key from the CMK: `CMK_EK` (encryption key)
-
+- A verifies the signature using B's static public key: `V(S(CMK_KEM, sSKb), CMK_KEM, sPKb) => CMK_KEM`
+- A derives the CMK from the KEM: `UNKEM(CMK_KEM, eSKa) => CMK`
+- A can KDF the CMK into a symmetric encryption key: `CMK_EK` (encryption key)
 
 
 Note
@@ -30,20 +28,21 @@ Note
 - Symmetric encryption is authenticated => no need for MAC
 - Signatures have a [random value, timestamp, recipient public key] attached to them
 - Every fixed time point, keys are updated using a symmetric key wrap
+- Has to be encrypt then sign for KEM as this is how KEM key generation works
 
 <BR>
 
-There is a MITM the middle attack that appears as if it could be successful here, by an adversary (C) intercepting the 
-stage 1 key transport, when A sends its signed ephemeral public key to B. If C was to replace the signed ephemeral 
-key with its own signed ephemeral kay, there would be an IP mismatch in the DHT for a verification, but if C also 
-swapped the IP addresses on the packet, then B would generate and send a symmetric key to C, who could forward along 
+There is a MITM the middle attack that appears as if it could be successful here, by an adversary (E) intercepting the 
+stage 1 key transport, when A sends its signed ephemeral public key to B. If E was to replace the signed ephemeral 
+key with its own signed ephemeral kay, there would be an IP mismatch in the DHT for a verification, but if E also 
+swapped the IP addresses on the packet, then B would generate and send a symmetric key to E, who could forward along 
 the signature to A. However, because recipient id is embedded into the signature, it is impossible for this to 
-happen - A would see that a signed message from B was actually intended for C, and therefore would close the 
+happen - A would see that a signed message from B was actually intended for E, and therefore would close the 
 connection down immediately, before any information is leaked.
 - If A's signed keys are changed, and IP isn't changed -> verification at B fails because statis keys for A's IP 
-  won't verify C's signature
+  won't verify E's signature
 - If A's signed keys are changed, and IP is changed too -> verification at A fails because the recipient id in the 
-  received signature from B (forwarded back by C) would be C's id, not A's id
+  received signature from B (forwarded back by E) would be E's id, not A's id
 
 
 ### Establishing end-to-end encryption for packet data connections [PDCP]
@@ -66,10 +65,10 @@ must create the symmetric keys, and KEM them to the relay nodes. The following s
 
 - A chooses a node N from the DHT, using a predefined algorithm
 - A generates a random symmetric packet master key: `PMK` (packet master key)
-- A derives a symmetric encryption key from the PMK: `PMK_EK` (encryption key)
 - A knows the ephemeral public key of N: `ePKn` (forwarded back from the control-connection-handshake)
 - A KEMs the PMK with N's ephemeral public key: `KEM(PMK, ePKn)`
 - A sends a `PKT_REQ` to N, with the KEMed PMK as metadata (via the relay nodes)
+- A can KDF the PMK into a symmetric encryption key: `PMK_EK` (encryption key)
 
 <BR>
 
@@ -77,7 +76,7 @@ must create the symmetric keys, and KEM them to the relay nodes. The following s
 - N decrypts the KEMed PMK using its own ephemeral private key: `UNKEM(KEM(PMK, ePKn), eSKn) => PMK`
 - N derives a symmetric encryption key from the PMK: `PMK_EK` (encryption key)
 - N signs the hash of the PMK with its static secret key: `S(H(PMK), sSKn)`
-- N sends a `PKT_ACC` to A, with the signed hash of the PMK as metadata (via the relay nodes)
+- N sends a `PKT_ACC` to A, with the signed hash of the PMK as metadata (signed-plaintext-hash, via the relay nodes)
 
 <BR>
 
