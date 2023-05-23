@@ -74,7 +74,7 @@ class node:
                 else:
                     plain_text = byte_tools.merge(connection_protocol.COMMAND_CONNECT_ACCEPT, who_from.bytes, response_.data)
                     cipher_text = symmetric_cipher.encrypt(self._e2e_prev_node_master_key.symmetric_cipher_key, plain_text)
-                    self._socket.sendto(response(connection_protocol.COMMAND_FORWARD, data=cipher_text), self._prev_node_ip.socket_format)
+                    self._socket.sendto(response(connection_protocol.COMMAND_FORWARD, data=cipher_text).bytes, self._prev_node_ip.socket_format)
 
             case connection_protocol.COMMAND_CONNECT_REJECT if self._candidate_next_node_ip and who_from == self._candidate_next_node_ip:
                 self._candidate_next_node_ip = None
@@ -85,8 +85,13 @@ class node:
                     cipher_text = symmetric_cipher.encrypt(self._e2e_prev_node_master_key.symmetric_cipher_key, plain_text)
                     self._socket.sendto(response(connection_protocol.COMMAND_FORWARD, data=cipher_text), self._prev_node_ip.socket_format)
 
+            case connection_protocol.COMMAND_FORWARD:
+                plain_text = symmetric_cipher.decrypt(self._e2e_prev_node_master_key.symmetric_cipher_key, response_.data)
+                command, who_to, data = byte_tools.unmerge(plain_text, 2)
+                self._socket.sendto(response(command, data=data).bytes, who_to)
+                
     def _qualified_to_accept_connection(self) -> bool:
-        ...
+        return True
 
     @property
     def _my_ephemeral_public_key(self) -> secure_bytes:

@@ -1,11 +1,16 @@
 from __future__ import annotations
+
+import os
+
 from cryptography.hazmat.primitives.constant_time import bytes_eq
+from src.crypto_engines.hashing import hashing
 
 
 class secure_bytes(bytes):
     """
     The secure_bytes class is a wrapper class around the bytes class that implements constant time comparison methods.
     """
+    _bytes: bytes
 
     def __init__(self, b=b""):
         # Assign the bytes object to the internal bytes object.
@@ -13,11 +18,18 @@ class secure_bytes(bytes):
 
     def __eq__(self, other: secure_bytes) -> bool:
         # Compare the internal bytes objects using the constant time comparison method.
-        return bytes_eq(self._bytes, other._bytes)
+        salt = secure_bytes(os.urandom(32))
+        hash_lhs = hashing.hash(salt + self)
+        hash_rhs = hashing.hash(salt + other)
+
+        checks = []
+        for b1, b2 in zip(hash_lhs, hash_rhs):
+            checks.append(b1 == b2)
+        return all(checks)
 
     def __ne__(self, other: secure_bytes) -> bool:
         # Compare the internal bytes objects using the constant time comparison method.
-        return not bytes_eq(self._bytes, other._bytes)
+        return not self == other
 
     def __add__(self, other: secure_bytes) -> secure_bytes:
         # Add the internal bytes objects.
