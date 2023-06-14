@@ -9,7 +9,7 @@ In this scenario, A will perform a handshake with B to initiate a secure UDP con
 
 - B receives a `CON_REQ` from A, with the A's signed ephemeral public key as metadata
 - B verifies A's ephemeral public key with A's static public key: `V(S(ePKa, sSKa), ePKa, sPKa)`
-- B generated the KEM for a master key: `KEM(ePKa) => [CMK, CMK_KEM]`
+- B generates the KEM for a master key: `KEM(ePKa) => [CMK, CMK_KEM]`
 - B signs the `CMK_KEM` with its static secret key: `S(CMK_KEM, sSKb)`
 - B sends a `CON_ACC` to A, with the signed KEM as metadata
 - B can KDF the CMK into a symmetric encryption key: `CMK_EK` (encryption key)
@@ -93,3 +93,66 @@ Note
 - Every packet manipulated -> counter incremented
 - Every fixed time point (n milliseconds), iv is updated
 - Every random time time point (n seconds), keys are updated using a symmetric key wrap
+
+
+### Hidden services (HS)
+#### Hosting the hidden service
+- A server can host some "hidden service" ie a website
+- The server owner must own a "guard" device, which is used to add the {hidden-service: public-key} pair to the DHT
+- The "guard" device can be discarded or added to the overlay network as a normal node
+- Recommended that the guard node isn't the hosting server (prevents getting server IPs from monitoring the DHT)
+- Recommended the hidden service public key is copied and not transmitted to the guard node (absolute certainty)
+
+#### Broker node & broker authenticating the hidden service
+- The broker(s) will be chosen and connected to by the host server
+- The broker needs to know that the unknown device claiming to host the service via a route is actually the host server
+- Broker will request a challenge-response from the host server, to verify it is the host server (nonce & timestamp)
+- The host server will sign the challenge-response with the service static public key (not its own signing static key)
+- This way the broker can verify the host server is the host server, without knowing the host server's identity
+- The broker can now trust the host server, and advertise the service via the DHT
+- Allows for multiple servers to host the hidden service (they can share the public key)
+
+#### Broker advertisement & client authenticating the hidden service
+- The broker will advertise that it can access the hidden service via a onion route
+- Any client wanting to access the hidden service will connect to the broker via an onion route
+- The client cannot trust the broker or server at this moment, so it will request a challenge-response from the server
+  - The value being challenged with is an ephemeral public key from the client
+- The server will sign the challenge-response with the service static public key (not its own signing static key)
+  - The server will sign the clients public key and a KEMed master key as the challenge
+  - All data (is signed and) is sent back to the client
+- This way the client can verify the server is the server, without knowing the server's identity
+  - The client can check the signature, and UNKEM the master key with its own private key
+  - The client can now trust the server, and send data to the server via the broker on an authenticated encrypted channel
+- The client does not need to trust the broker, because the broker cannot modify the challenge-response
+  - Random nonce and timestamp prevents replay attacks
+- The broker performs a separate challenge-response with the server, to reduce congestion on the network
+
+#### Client connecting to the hidden service
+- The client will maintain the connection to the broker and the broker will maintain the connection to the server
+- Data can be exchanged as usual - rather than a webserver, there is a broker, that performs additional hops to the 
+  actual server
+- As well as the layered encryption of both onion routes, there is an underlying encrypted channel to the server 
+  from the client
+
+
+### Distributed storage service (DSS)
+#### Choosing nodes
+- Same as hidden services - the client and hosting nodes never know the IP addresses of each other
+- Acts as an access-controlled cloud storage will anonymous access to the data
+
+#### Storing data
+- A node can store data on devices on the network
+- Each storing device will consent specifically to the data being stored on it
+- The data owner will split the data into M parts, and each part is duplicated N times
+- M * N nodes store consistent copies of the data across the DHT
+- The owner can allow for either themselves, a whitelist, or anyone to access the data
+- Data stored is encrypted under a master key derived from Shamir's Secret Sharing (allows for L nodes to decrypt it)
+- Publicly available data is not encrypted in storage, but is encrypted in transit
+
+#### Retrieving data
+- Storing nodes will advertise that they are storing certain data, via broker nodes
+- The client will connect to the broker nodes, and request the data (same as hidden services)
+- The client will have to connect to M nodes, to retrieve the M parts of the data
+- Data is received and re-assembled by the client (and decrypted if necessary)
+
+#### Updating data
