@@ -33,7 +33,11 @@ class circuit_node(node):
         # are designed to be available to everyone, and KEMs don't allow for this anyway.
         their_signed_ephemeral_public_key, their_ephemeral_public_key = byte_tools.unmerge(response_.data, 1)
         their_static_public_key = dht.get_static_public_key(who_from)
-        digital_signatures.verify(their_static_public_key, their_ephemeral_public_key, their_signed_ephemeral_public_key, self._my_ephemeral_public_key)
+        digital_signatures.verify(
+            their_static_public_key=their_static_public_key,
+            message=their_ephemeral_public_key,
+            signature=their_signed_ephemeral_public_key,
+            my_ephemeral_public_key=self._my_ephemeral_public_key)
 
         # Once this node has verified the recipient's ephemeral public key, it can generate a master key for
         # authenticated, symmetric, end-to-end encryption over the shared channel. This master key is then KEM-wrapped
@@ -44,21 +48,22 @@ class circuit_node(node):
         # cannot be changed. For a handshake, however, security is not compromised by this.
         wrapped_master_key, master_key = kem.kem_wrap(their_ephemeral_public_key)
         signature, message = digital_signatures.sign(self._my_static_private_key, wrapped_master_key, their_ephemeral_public_key)
-        self._socket.sendto(byte_tools.merge(signature, message).raw, who_from.socket_format)
+        bytes_to_send = byte_tools.merge(signature, message).raw
+        self._socket.sendto(bytes_to_send, who_from.socket_format)
 
         # Save the master key to the previous node, so that it can be used to encrypt data sent to the recipient, and
         # decrypt data received from the recipient. The tag authentication is automatically handled by the symmetric
         # cipher functions.
         self._e2e_prev_node_master_key = key_set(master_key)
 
-    def _handle_connection_accept_command(self, response_: response, who_from: ip) -> None:
-        super()._handle_connection_accept_command(response_, who_from)
-        plain_text = byte_tools.merge(connection_protocol.COMMAND_CONNECT_ACCEPT, who_from.bytes, response_.data)
-        cipher_text = symmetric_cipher.encrypt(self._e2e_prev_node_master_key.symmetric_cipher_key, plain_text)
-        self._socket.sendto(response(connection_protocol.COMMAND_FORWARD, data=cipher_text).bytes, self._prev_node_ip.socket_format)
-
-    def _handle_connection_reject_command(self, response_: response, who_from: ip) -> None:
-        super()._handle_connection_reject_command(response_, who_from)
-        plain_text = byte_tools.merge(connection_protocol.COMMAND_CONNECT_REJECT, who_from.bytes, response_.data)
-        cipher_text = symmetric_cipher.encrypt(self._e2e_prev_node_master_key.symmetric_cipher_key, plain_text)
-        self._socket.sendto(response(connection_protocol.COMMAND_FORWARD, data=cipher_text).bytes, self._prev_node_ip.socket_format)
+    # def _handle_connection_accept_command(self, response_: response, who_from: ip) -> None:
+    #     super()._handle_connection_accept_command(response_, who_from)
+    #     plain_text = byte_tools.merge(connection_protocol.COMMAND_CONNECT_ACCEPT, who_from.bytes, response_.data)
+    #     cipher_text = symmetric_cipher.encrypt(self._e2e_prev_node_master_key.symmetric_cipher_key, plain_text)
+    #     self._socket.sendto(response(connection_protocol.COMMAND_FORWARD, data=cipher_text).bytes, self._prev_node_ip.socket_format)
+    #
+    # def _handle_connection_reject_command(self, response_: response, who_from: ip) -> None:
+    #     super()._handle_connection_reject_command(response_, who_from)
+    #     plain_text = byte_tools.merge(connection_protocol.COMMAND_CONNECT_REJECT, who_from.bytes, response_.data)
+    #     cipher_text = symmetric_cipher.encrypt(self._e2e_prev_node_master_key.symmetric_cipher_key, plain_text)
+    #     self._socket.sendto(response(connection_protocol.COMMAND_FORWARD, data=cipher_text).bytes, self._prev_node_ip.socket_format)

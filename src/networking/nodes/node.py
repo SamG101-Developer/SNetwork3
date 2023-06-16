@@ -16,13 +16,12 @@ import socket
 
 
 class node:
-
     _my_static_asymmetric_key_pair: key_pair
     _my_ephemeral_asymmetric_key_pair: key_pair
     _socket: socket.socket
 
-    _prev_node_ip: ip
-    _next_node_ip: ip
+    _prev_node_ip: Optional[ip]
+    _next_node_ip: Optional[ip]
     _candidate_next_node_ip: Optional[ip]
 
     _e2e_prev_node_master_key: key_set
@@ -52,13 +51,10 @@ class node:
         ...
 
     def _handle_connection_accept_command(self, response_: response, who_from: ip) -> None:
-        their_static_public_key = dht.get_static_public_key(who_from)
-        signed_wrapped_master_key, wrapped_master_key = byte_tools.unmerge(response_.data, 1)
-        digital_signatures.verify(their_static_public_key, wrapped_master_key, signed_wrapped_master_key, self._my_ephemeral_public_key)
-        self._e2e_next_node_master_key = key_set(kem.kem_unwrap(self._my_ephemeral_private_key, wrapped_master_key))
+        ...
 
     def _handle_connection_reject_command(self, response_: response, who_from: ip) -> None:
-        self._candidate_next_node_ip = None
+        ...
 
     def _handle_forward_command(self, response_: response, who_from: ip) -> None:
         plain_text = symmetric_cipher.decrypt(self._e2e_prev_node_master_key.symmetric_cipher_key, response_.data)
