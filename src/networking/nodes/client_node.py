@@ -33,7 +33,10 @@ class client_node(node):
         # static public key) and a timestamp.
         who_to, their_static_public_key = dht.select_node_and_get_public_key()
         init_message = byte_tools.merge(self._my_ephemeral_public_key, ip.this().bytes)
-        signature, message = digital_signatures.sign(self._my_static_private_key, init_message, their_static_public_key)
+        signature, message = digital_signatures.sign(
+            my_static_private_key=self._my_static_private_key,
+            message=init_message,
+            their_id=their_static_public_key)
 
         # Set the candidate next node IP address, and send the connection request to the selected node. The
         # candidate IP address is required so that an incoming CON_ACC or CON_REJ command can be verified as being
@@ -44,6 +47,9 @@ class client_node(node):
     def _init_packet_handler(self) -> None:
         ...
 
+    # TODO -> Error handling
+    #   - Invalid signature => increase potential attack vector, re-initialise circuit
+    #   - Cannot find the node in the DHT => CRITICAL
     def _handle_connection_accept_command(self, response_: response, who_from: ip) -> None:
         # The client node receives a connection accept command from another node. The first operation performed is to
         # verify the signature of the KEMed symmetric master key. If the signature is valid, the client node will
@@ -62,19 +68,24 @@ class client_node(node):
         self._e2e_next_node_master_key = key_set(kem.kem_unwrap(self._my_ephemeral_private_key, wrapped_master_key))
         self._init_packet_handler()
 
+
+    # TODO -> Error handling
+    #   - Invalid reason to reject => try reconnect once to the same node (different port)
+    #   - Invalid signature 1 => try reconnect once to the same node (different port)
+    #   - Invalid signature n => increase potential attack vector, re-initialise circuit
+    #   - Cannot find the node in the DHT => CRITICAL
     def _handle_connection_reject_command(self, response_: response, who_from: ip) -> None:
         # The client node receives a connection reject command from another node. Check the signature of the reason
-        # for rejection, and if there is a signature mismatch then there is ap possibility that someone had forced the
-        # rejection, so retry the connection. If the signature is valid, then the client node will re-initialise the
-        # circuit, and try to connect to another node.
+        # for rejection, and if there is a signature mismatch, then there is a possibility that someone had forced the
+        # rejection, so retry the connection, to try to reduce the bias of node choices (prevent attacks where nodes
+        # are forced to be used from exhaustion). If the signature is valid, then the client node will re-initialise
+        # the circuit, and try to connect to another node.
         signed_reason_to_reject, reason_to_reject = response_.data
         digital_signatures.verify(
             their_static_public_key=dht.get_static_public_key(who_from),
             message=reason_to_reject,
             signature=signed_reason_to_reject,
             my_ephemeral_public_key=self._my_ephemeral_public_key)
-
-        # TODO - try reconnect if the signature is invalid
 
         # Re-initialise the circuit, and try to connect to another node. Reset the candidate next node IP address to
         # None, so that the circuit is re-initialised.

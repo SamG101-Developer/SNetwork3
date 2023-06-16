@@ -21,12 +21,12 @@ class digital_signatures:
         return key_pair(digital_signatures.ALGORITHM.generate_keypair())
 
     @staticmethod
-    def sign(my_static_private_key: secure_bytes, message: secure_bytes, their_ephemeral_public_key: secure_bytes) -> tuple[secure_bytes, secure_bytes]:
+    def sign(my_static_private_key: secure_bytes, message: secure_bytes, their_id: secure_bytes) -> tuple[secure_bytes, secure_bytes]:
         # Hash with the recipient's ephemeral public key, and the current time in bytes. This is to ensure that the
         # message is only valid for a certain amount of time, and that the message is only valid for the intended
         # recipient -- mitigate replay attacks.
         time_bytes = timestamp.current_time_bytes()
-        message = hashing.hash(byte_tools.merge(message, time_bytes, their_ephemeral_public_key))
+        message = hashing.hash(byte_tools.merge(message, time_bytes, their_id))
 
         # Sign the message with the client's static private key, and return the signature along with the message.
         signature = digital_signatures.ALGORITHM.sign(my_static_private_key, message)

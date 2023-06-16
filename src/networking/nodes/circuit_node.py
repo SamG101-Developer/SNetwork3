@@ -55,15 +55,3 @@ class circuit_node(node):
         # decrypt data received from the recipient. The tag authentication is automatically handled by the symmetric
         # cipher functions.
         self._e2e_prev_node_master_key = key_set(master_key)
-
-    # def _handle_connection_accept_command(self, response_: response, who_from: ip) -> None:
-    #     super()._handle_connection_accept_command(response_, who_from)
-    #     plain_text = byte_tools.merge(connection_protocol.COMMAND_CONNECT_ACCEPT, who_from.bytes, response_.data)
-    #     cipher_text = symmetric_cipher.encrypt(self._e2e_prev_node_master_key.symmetric_cipher_key, plain_text)
-    #     self._socket.sendto(response(connection_protocol.COMMAND_FORWARD, data=cipher_text).bytes, self._prev_node_ip.socket_format)
-    #
-    # def _handle_connection_reject_command(self, response_: response, who_from: ip) -> None:
-    #     super()._handle_connection_reject_command(response_, who_from)
-    #     plain_text = byte_tools.merge(connection_protocol.COMMAND_CONNECT_REJECT, who_from.bytes, response_.data)
-    #     cipher_text = symmetric_cipher.encrypt(self._e2e_prev_node_master_key.symmetric_cipher_key, plain_text)
-    #     self._socket.sendto(response(connection_protocol.COMMAND_FORWARD, data=cipher_text).bytes, self._prev_node_ip.socket_format)
