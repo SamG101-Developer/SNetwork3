@@ -155,4 +155,4 @@ Note
 - The client will have to connect to M nodes, to retrieve the M parts of the data
 - Data is received and re-assembled by the client (and decrypted if necessary)
 
-#### Updating data
+#### Updating data 
