@@ -13,7 +13,9 @@ class connection_protocol(Enum):  # TODO -> separate into connection_command(Enu
     COMMAND_CONNECT_ACCEPT  = 0x05.to_bytes(1, "little")  # connection accepted, and send signed ePKn
     COMMAND_KEM_KEY         = 0x07.to_bytes(1, "little")  # incoming kem wrapped key
     COMMAND_CONFIRM_KEM_KEY = 0x08.to_bytes(1, "little")  # confirm
+    COMMAND_EXTEND_CIRCUIT  = 0x09.to_bytes(1, "little")  # extend circuit
 
+    FLAG_NONE = secure_bytes(0x00.to_bytes(1, "little"))
     FLAG_PH1 = 0x01.to_bytes(1, "little")
     FLAG_PH2 = 0x02.to_bytes(1, "little")
     FLAG_PH3 = 0x04.to_bytes(1, "little")
