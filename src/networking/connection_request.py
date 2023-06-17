@@ -24,6 +24,11 @@ class request:
     def data(self) -> secure_bytes:
         return self._data
 
+    @data.setter
+    def data(self, new_data: secure_bytes):
+        # Used to encrypt the data after it has already been set
+        self._data = new_data
+
     @property
     def bytes(self) -> secure_bytes:
         return self._command.value + (self._flag.value or b'\x00') + (self._data or b'\x00')
@@ -33,4 +38,5 @@ class request:
         return cls(command=data[0:1], flag=data[1:2], data=data[2:])
 
 
-response = request
+class response(request):
+    ...
