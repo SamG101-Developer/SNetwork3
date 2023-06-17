@@ -60,3 +60,44 @@ class circuit_node(node):
         # decrypt data received from the recipient. The tag authentication is automatically handled by the symmetric
         # cipher functions.
         self._e2e_prev_node_master_key = key_set(master_key)
+
+    def _handle_connection_accept_command(self, response_: response, who_from: ip) -> None:
+        super()._handle_connection_accept_command(response_, who_from)
+
+        # Additional behaviour is to send the signed ephemeral public key to the previous node in the route,
+        # so that the key reaches the client node will end up with it -- this is required so that the client node can
+        # prepare master keys for packet encryption between the client and the nth node. Firstly create the "forward"
+        # request that will be sent back to the previous node in the route.
+        cipher_text = self._construct_forwarded_message(response_)
+        self._socket.sendto(cipher_text, self._prev_node_ip.socket_format)
+
+    def _handle_connection_reject_command(self, response_: response, who_from: ip) -> None:
+        super()._handle_connection_reject_command(response_, who_from)
+
+        # Additional behaviour it to notify the client that the node being connected to has rejected the connection
+        # and is therefore unavailable. This is done by forwarding the rejection message to the client,
+        # with the rejection reason (for logging?).
+        cipher_text = self._construct_forwarded_message(response_)
+        self._socket.sendto(cipher_text, self._prev_node_ip.socket_format)
+
+    def _handle_forward_command_to_next(self, response_: response, who_from: ip) -> None:
+        # Decrypt the message from the previous node (end to end authenticated encryption), and then re-encrypt the
+        # message for the next node in the route. The message is then sent to the next node in the route. MITM
+        # attacks are mitigated due to an underlying signature on the message, which is verified by the client node.
+        plain_text = symmetric_cipher.decrypt(self._e2e_prev_node_master_key.symmetric_cipher_key, response.data)
+        modified_request = request.from_received_data(plain_text)
+        modified_request.command = modified_request.data[0]
+        modified_request.data = modified_request.data[1:]
+        cipher_text = symmetric_cipher.encrypt(self._e2e_next_node_master_key.symmetric_cipher_key, modified_request.bytes)
+        self._socket.sendto(cipher_text, self._next_node_ip.socket_format)
+
+    def _handle_forward_command_to_prev(self, response_: response, who_from: ip) -> None:
+        # Decrypt the message from the next node (end to end authenticated encryption), and then re-encrypt the
+        # message for the previous node in the route. The message is then sent to the previous node in the route. MITM
+        # attacks are mitigated due to an underlying signature on the message, which is verified by the client node.
+        plain_text = symmetric_cipher.decrypt(self._e2e_next_node_master_key.symmetric_cipher_key, response.data)
+        modified_request = request.from_received_data(plain_text)
+        modified_request.command = modified_request.data[0]
+        modified_request.data = modified_request.data[1:]
+        cipher_text = symmetric_cipher.encrypt(self._e2e_prev_node_master_key.symmetric_cipher_key, modified_request.bytes)
+        self._socket.sendto(cipher_text, self._prev_node_ip.socket_format)
