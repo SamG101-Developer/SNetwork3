@@ -65,7 +65,8 @@ must create the symmetric keys, and KEM them to the relay nodes. The following s
 
 - A chooses a node N from the DHT, using a predefined algorithm
 - A generates a random symmetric packet master key: `PMK` (packet master key)
-- A knows the ephemeral public key of N: `ePKn` (forwarded back from the control-connection-handshake)
+- A knows the ephemeral public key of N: `ePKn, S(ePKn)` (forwarded back from the control-connection-handshake)
+- A verifies the signature of the ephemeral public key using N's static public key: `V(S(ePKn), ePKn, sPKn)`
 - A KEMs the PMK with N's ephemeral public key: `KEM(PMK, ePKn)`
 - A sends a `PKT_REQ` to N, with the KEMed PMK as metadata (via the relay nodes)
 - A can KDF the PMK into a symmetric encryption key: `PMK_EK` (encryption key)
