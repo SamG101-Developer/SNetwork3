@@ -1,5 +1,5 @@
 from src.networking.nodes.node import node
-from src.networking.connection_request import response
+from src.networking.connection_request import request, response
 from src.networking.connection_protocol import connection_protocol
 from src.networking.ip import ip
 
