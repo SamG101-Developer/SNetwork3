@@ -16,7 +16,12 @@ import socket
 class circuit_node(node):
     def __init__(self):
         super().__init__()
-        self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        # Create the UDP socket that this circuit node will use to communicate with other circuit nodes (the previous
+        # and next node in the route). This socket will be bound to the circuit node's IP address and will be used to
+        # send and receive messages to and from the previous and next node in the route. Force the use of IPv6,
+        # as it is more secure and efficient than IPv4.
+        self._socket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
         self._socket.bind(ip.this().socket_format)
 
     def _handle_connection_request_command(self, response_: response, who_from: ip) -> None:
