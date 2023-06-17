@@ -15,12 +15,12 @@ class kem:
         return key_pair(kyber1024.generate_keypair())
 
     @staticmethod
-    def kem_wrap(recipient_ephemeral_public_key: secure_bytes) -> tuple[secure_bytes, secure_bytes]:
+    def kem_wrap(their_ephemeral_public_key: secure_bytes) -> tuple[secure_bytes, secure_bytes]:
         # wrap the plain key with the recipient's ephemeral public key
-        cipher_text, plain_text = kyber1024.encrypt(recipient_ephemeral_public_key)
+        cipher_text, plain_text = kyber1024.encrypt(their_ephemeral_public_key)
         return secure_bytes(cipher_text), secure_bytes(plain_text)
 
     @staticmethod
-    def kem_unwrap(client_ephemeral_private_key: secure_bytes, encapsulated_key: secure_bytes) -> secure_bytes:
+    def kem_unwrap(my_ephemeral_private_key: secure_bytes, encapsulated_key: secure_bytes) -> secure_bytes:
         # generate the random mask s and unwrap the received key with the
-        return secure_bytes(kyber1024.decrypt(client_ephemeral_private_key, encapsulated_key))
+        return secure_bytes(kyber1024.decrypt(my_ephemeral_private_key, encapsulated_key))
