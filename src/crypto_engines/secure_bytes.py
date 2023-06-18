@@ -16,6 +16,11 @@ class secure_bytes(bytes):
         # Assign the bytes object to the internal bytes object.
         self._bytes = b
 
+    @staticmethod
+    def random(length: int) -> secure_bytes:
+        # Return a secure_bytes object with random bytes.
+        return secure_bytes(os.urandom(length))
+
     def __eq__(self, other: secure_bytes) -> bool:
         # Compare the internal bytes objects using the constant time comparison method.
         salt = secure_bytes(os.urandom(32))

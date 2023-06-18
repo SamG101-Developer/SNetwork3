@@ -47,6 +47,9 @@ class node:
             case connection_protocol.COMMAND_FORWARD if who_from == self._prev_node_ip:
                 self._handle_forward_command_to_prev(response_, who_from)
 
+            case connection_protocol.COMMAND_EXTEND_CIRCUIT if who_from == self._prev_node_ip:
+                self._handle_extend_circuit_command(response_, who_from)
+
 
     def _handle_connection_request_command(self, response_: response, who_from: ip) -> None:
         ...
@@ -101,6 +104,34 @@ class node:
 
     def _handle_forward_command_to_prev(self, response_: response, who_from: ip) -> None:
         ...
+
+    def _handle_extend_circuit_command(self, request_: request, who_from: ip) -> None:
+        # Clear all IP addresses (these could be non-Null from a previous circuit connection attempt). Generate a new
+        # ephemeral asymmetric key pair, to ensure perfect forward secrecy, ensuring that each session is uniquely
+        # encrypted.
+        self._prev_node_ip = None
+        self._next_node_ip = None
+        self._my_ephemeral_asymmetric_key_pair = kem.generate_keypair()
+
+        # The IP address of the next node will have been selected from the DHT by the client, and is therefore in the
+        # payload of the request received from the previous node.
+        who_to = ip.from_bytes(request.data)
+        their_static_public_key = dht.get_static_public_key(who_to)
+        signed_my_ephemeral_public_key, _ = digital_signatures.sign(
+            my_static_private_key=self._my_static_private_key,
+            message=self._my_ephemeral_public_key,
+            their_id=their_static_public_key)
+
+        # Set the candidate next node IP address, and send the connection request to the selected node. The
+        # candidate IP address is required so that an incoming CON_ACC or CON_REJ command can be verified as being
+        # as coming from the correct node.
+        bytes_to_send = byte_tools.merge(signed_my_ephemeral_public_key, self._my_ephemeral_public_key)
+        request_ = request(
+            command=connection_protocol.COMMAND_CONNECT_REQUEST,
+            flag=connection_protocol.FLAG_NONE,
+            data=bytes_to_send)
+        self._candidate_next_node_ip = who_to
+        self._socket.sendto(request_.bytes, who_to.socket_format)
 
     def _qualified_to_accept_connection(self) -> bool:
         return True

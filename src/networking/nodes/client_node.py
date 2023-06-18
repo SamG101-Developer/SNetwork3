@@ -24,48 +24,32 @@ class client_node(node):
         self._number_hops = 3
         self._nodes_in_circuit = []
         self._next_node_accepted = None
-        self._init_circuit()
 
-    def _init_circuit(self) -> None:
-        # Clear all IP addresses (these could be non-Null from a previous circuit connection attempt). Generate a new
-        # ephemeral asymmetric key pair, to ensure perfect forward secrecy, ensuring that each session is uniquely
-        # encrypted.
-        self._prev_node_ip = None
-        self._next_node_ip = None
-        self._my_ephemeral_asymmetric_key_pair = kem.generate_keypair()
-
-        # Select a node from the DHT to connect to. Form the connection request command, and send it to the selected
-        # node. The connection request consists of the CON_REQ command, the ephemeral public key of this node, and the
-        # signature of the ephemeral public key. The signature will embed meta data such as the recipients id (their
-        # static public key) and a timestamp.
-        who_to, their_static_public_key = dht.select_node_and_get_public_key()
-        init_message = byte_tools.merge(self._my_ephemeral_public_key, ip.this().bytes)
-        signature, message = digital_signatures.sign(
-            my_static_private_key=self._my_static_private_key,
-            message=init_message,
-            their_id=their_static_public_key)
-
-        # Set the candidate next node IP address, and send the connection request to the selected node. The
-        # candidate IP address is required so that an incoming CON_ACC or CON_REJ command can be verified as being
-        # as coming from the correct node.
-        self._candidate_next_node_ip = who_to
-        self._socket.sendto(byte_tools.merge(signature, message), who_to.socket_format)
+        self._e2e_next_node_master_key = key_set.random()
+        self._init_packet_handler()
 
     def _init_packet_handler(self) -> None:
+        # To start the connection process, the client will simulate sending itself a connection extension command,
+        # by calling the method that the "extend" command would call. This will cause the correct method to call and
+        # begin creating the circuit.
+        self._nodes_in_circuit.append((ip.this(), None, None))
+
         # Iterate so that there are the correct number of nodes in the relay circuit. Each iteration will add another
         # node into the circuit, and will perform a KEM key exchange with the node, via the existing relay circuit.
-        for i in range(self._number_hops):
+        for i in range(1, self._number_hops + 1):
 
             # Find a new node (and its associated public key) to connect to, by querying the DHT. Construct the
             # connection request command, and wrap it in the correct number of forwarded messages - each iteration
-            # will remove 1 "forward" command, so the correct node will receive the actual command.
-            candidate_node, candidate_node_static_public_key = dht.select_node_and_get_public_key()
+            # will remove 1 "forward" command, so the correct node will receive the actual command. The "extend"
+            # command is used to tell the current circuit node to extend the circuit by 1 node. The layered
+            # encryption means that only the last node will ever see the IP address of the target node.
+            target_node, target_node_static_public_key = dht.select_node_and_get_public_key()
             request_ = request(
                 command=connection_protocol.COMMAND_EXTEND_CIRCUIT,
                 flag=connection_protocol.FLAG_NONE,
-                data=secure_bytes())
+                data=target_node)
 
-            for j in range(i):
+            for j in range(i - 1):
                 request_ = request(connection_protocol.COMMAND_FORWARD, connection_protocol.FLAG_NONE, request_.bytes)
                 request_.data = symmetric_cipher.encrypt(self._nodes_in_circuit[j][2].symmetric_key, request_.data)
 
@@ -74,8 +58,7 @@ class client_node(node):
             # no forwarding (i=0), so the routing isn't changed. Send the (possibly wrapped) request to the first node
             # in the circuit, and wait for a response (flag will be set). This must be a blocking operation as the
             # circuit has to be constructed in order.
-            first_node = self._nodes_in_circuit[0] if i > 0 else candidate_node
-            self._socket.sendto(request_.bytes, first_node.socket_format)
+            self._socket.sendto(request_.bytes, self._nodes_in_circuit[0][0].socket_format)
 
             # Wait for a reject or accept response from the target node. If the response is a reject, then the node
             # will be removed from the circuit, and the loop will continue, so that another node can be selected.
@@ -107,7 +90,7 @@ class client_node(node):
                 flag=connection_protocol.FLAG_NONE,
                 data=wrapped_symmetric_key)
 
-            for j in range(i):
+            for j in range(i - 1):
                 request_ = request(connection_protocol.COMMAND_FORWARD, connection_protocol.FLAG_NONE, request_.bytes)
                 request_.data = symmetric_cipher.encrypt(self._nodes_in_circuit[j][2].symmetric_key, request_.data)
 
@@ -116,7 +99,6 @@ class client_node(node):
             # request, and perform a KEM key exchange with the client node. The target node will then send back a
             # response, which will be forwarded back to the client node.
             self._socket.sendto(request_.bytes, self._nodes_in_circuit[0][0].socket_format)
-
 
     def _handle_connection_accept_command(self, response_: response, who_from: ip) -> None:
         super()._handle_connection_accept_command(response_, who_from)

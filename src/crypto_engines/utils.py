@@ -12,6 +12,10 @@ class key_set:
         self._hashed_master_key = hashing.hash(master_key)
         self._symmetric_cipher_key = kdf.derive_key(master_key, secure_bytes(b"SYMMETRIC-CIPHER-KEY"), symmetric_cipher.KEY_LENGTH)
 
+    @staticmethod
+    def random() -> key_set:
+        return key_set(secure_bytes.random(32))
+
     @property
     def master_key(self) -> secure_bytes:
         return self._master_key
